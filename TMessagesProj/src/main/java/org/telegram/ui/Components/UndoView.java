@@ -12,6 +12,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.Layout;
 import android.text.Selection;
@@ -56,6 +57,7 @@ import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Premium.boosts.BoostRepository;
 import org.telegram.ui.PaymentFormActivity;
 
@@ -156,6 +158,7 @@ public class UndoView extends FrameLayout {
 
     public final static int ACTION_MESSAGE_COPIED = 52;
     public final static int ACTION_FWD_MESSAGES = 53;
+    public final static int ACTION_FAST_FWD_MESSAGE = 95;
     public final static int ACTION_NOTIFY_ON = 54;
     public final static int ACTION_NOTIFY_OFF = 55;
     public final static int ACTION_USERNAME_COPIED = 56;
@@ -929,7 +932,7 @@ public class UndoView extends FrameLayout {
             undoButton.setVisibility(GONE);
         } else if (currentAction == ACTION_IMPORT_NOT_MUTUAL || currentAction == ACTION_IMPORT_GROUP_NOT_ADMIN || currentAction == ACTION_IMPORT_INFO ||
                 currentAction == ACTION_MESSAGE_COPIED ||
-                currentAction == ACTION_FWD_MESSAGES || currentAction == ACTION_NOTIFY_ON || currentAction == ACTION_NOTIFY_OFF ||  currentAction == ACTION_USERNAME_COPIED ||
+                currentAction == ACTION_FWD_MESSAGES || currentAction == ACTION_FAST_FWD_MESSAGE || currentAction == ACTION_NOTIFY_ON || currentAction == ACTION_NOTIFY_OFF ||  currentAction == ACTION_USERNAME_COPIED ||
                 currentAction == ACTION_HASHTAG_COPIED || currentAction == ACTION_TEXT_COPIED || currentAction == ACTION_LINK_COPIED || currentAction == ACTION_PHONE_COPIED ||
                 currentAction == ACTION_AUTO_DELETE_OFF || currentAction == ACTION_AUTO_DELETE_ON || currentAction == ACTION_GIGAGROUP_CANCEL || currentAction == ACTION_GIGAGROUP_SUCCESS ||
                 currentAction == ACTION_VOIP_INVITE_LINK_SENT || currentAction == ACTION_PIN_DIALOGS || currentAction == ACTION_UNPIN_DIALOGS || currentAction == ACTION_SHARE_BACKGROUND || currentAction == ACTION_EMAIL_COPIED) {
@@ -1039,6 +1042,38 @@ public class UndoView extends FrameLayout {
                 }
                 leftImageView.setAnimation(R.raw.contact_check, 36, 36);
                 timeLeft = 3000;
+            } else if (currentAction == ACTION_FAST_FWD_MESSAGE) {
+                if (infoObject2 == null || infoObject2 instanceof TLRPC.TL_forumTopic) {
+                    if (did == UserConfig.getInstance(currentAccount).clientUserId) {
+                        infoTextView.setText(AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.FwdMessageToSavedMessages), SavedMessagesController::openSavedMessages));
+                        leftImageView.setAnimation(R.raw.saved_messages, 30, 30);
+                    } else {
+                        if (DialogObject.isChatDialog(did)) {
+                            TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-did);
+                            TLRPC.TL_forumTopic topic = (TLRPC.TL_forumTopic) infoObject2;
+                            infoTextView.setText(AndroidUtilities.replaceSingleTag(LocaleController.formatString("FwdMessageToGroup", R.string.FwdMessageToGroup, topic != null ? topic.title : chat.title),
+                                    -1, AndroidUtilities.REPLACING_TAG_TYPE_LINKBOLD, () -> {
+                                MessagesController.getInstance(currentAccount).openChatOrProfileWith(null, chat, parentFragment, 0, false);
+                            }));
+                        } else {
+                            TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(did);
+                            infoTextView.setText(
+                                    AndroidUtilities.replaceSingleTag(LocaleController.formatString("FwdMessageToUser", R.string.FwdMessageToUser, UserObject.getFirstName(user)),
+                                            -1, AndroidUtilities.REPLACING_TAG_TYPE_LINKBOLD, () -> {
+                                Bundle args = new Bundle();
+                                args.putLong("user_id", user.id);
+                                if (MessagesController.getInstance(currentAccount).checkCanOpenChat(args, parentFragment)) {
+                                    parentFragment.presentFragment(new ChatActivity(args));
+                                } else {
+                                    MessagesController.getInstance(currentAccount).openChatOrProfileWith(user, null, parentFragment, 0, false);
+                                }
+                            }));
+                        }
+                        leftImageView.setAnimation(R.raw.forward, 30, 30);
+                        hapticDelay = 300;
+                    }
+                }
+                timeLeft = 3000;
             } else if (currentAction == ACTION_FWD_MESSAGES) {
                 Integer count = (Integer) infoObject;
                 if (infoObject2 == null || infoObject2 instanceof TLRPC.TL_forumTopic) {
@@ -1111,7 +1146,11 @@ public class UndoView extends FrameLayout {
             layoutParams.rightMargin = AndroidUtilities.dp(8);
 
             leftImageView.setProgress(0);
-            leftImageView.playAnimation();
+            if (currentAction == ACTION_FAST_FWD_MESSAGE) {
+                leftImageView.postDelayed(() -> leftImageView.playAnimation(), 300);
+            } else {
+                leftImageView.playAnimation();
+            }
             if (hapticDelay > 0) {
                 leftImageView.postDelayed(() -> {
                     leftImageView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);

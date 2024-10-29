@@ -77,13 +77,15 @@ public class LinkActionView extends LinearLayout {
     private boolean hideRevokeOption;
     private boolean canEdit = true;
     private final boolean isChannel;
+    private final boolean permanentBottomSheet;
     private final float[] point = new float[2];
 
-    public LinkActionView(Context context, BaseFragment fragment, BottomSheet bottomSheet, long chatId, boolean permanent, boolean isChannel) {
+    public LinkActionView(Context context, BaseFragment fragment, BottomSheet bottomSheet, long chatId, boolean permanent, boolean isChannel, boolean permanentBottomSheet) {
         super(context);
         this.fragment = fragment;
         this.permanent = permanent;
         this.isChannel = isChannel;
+        this.permanentBottomSheet = permanentBottomSheet;
 
         setOrientation(VERTICAL);
         frameLayout = new FrameLayout(context);
@@ -92,14 +94,19 @@ public class LinkActionView extends LinearLayout {
         linkView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         linkView.setEllipsize(TextUtils.TruncateAt.MIDDLE);
         linkView.setSingleLine(true);
+        frameLayout.addView(linkView);
 
         int containerPadding = 4;
-        frameLayout.addView(linkView);
+        int iconRightMargin = 0;
+        if (permanentBottomSheet) {
+            iconRightMargin = 8;
+        }
         optionsView = new ImageView(context);
-        optionsView.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_ab_other));
+        optionsView.setImageDrawable(ContextCompat.getDrawable(context, getOptionsIconId()));
         optionsView.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
         optionsView.setScaleType(ImageView.ScaleType.CENTER);
-        frameLayout.addView(optionsView, LayoutHelper.createFrame(40, 48, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
+        frameLayout.addView(optionsView, LayoutHelper.createFrame(40, 48, Gravity.RIGHT | Gravity.CENTER_VERTICAL,
+                0, 0, iconRightMargin, 0));
         addView(frameLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, containerPadding, 0, containerPadding, 0));
 
         LinearLayout linearLayout = new LinearLayout(context);
@@ -222,6 +229,12 @@ public class LinkActionView extends LinearLayout {
             if (actionBarPopupWindow != null) {
                 return;
             }
+
+            if (permanentBottomSheet) {
+                showQrCode();
+                return;
+            }
+
             ActionBarPopupWindow.ActionBarPopupWindowLayout layout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context);
 
             ActionBarMenuSubItem subItem;
@@ -456,7 +469,7 @@ public class LinkActionView extends LinearLayout {
         if (hideRevokeOption != b) {
             hideRevokeOption = b;
             optionsView.setVisibility(View.VISIBLE);
-            optionsView.setImageDrawable(ContextCompat.getDrawable(optionsView.getContext(), R.drawable.ic_ab_other));
+            optionsView.setImageDrawable(ContextCompat.getDrawable(optionsView.getContext(), getOptionsIconId()));
         }
     }
 
@@ -465,6 +478,14 @@ public class LinkActionView extends LinearLayout {
         linkView.setGravity(Gravity.CENTER);
         removeView.setVisibility(View.GONE);
         avatarsContainer.setVisibility(View.GONE);
+    }
+
+    private int getOptionsIconId() {
+        int icon = R.drawable.ic_ab_other;
+        if (permanentBottomSheet) {
+            icon = R.drawable.msg_qrcode;
+        }
+        return icon;
     }
 
     private class AvatarsContainer extends FrameLayout {

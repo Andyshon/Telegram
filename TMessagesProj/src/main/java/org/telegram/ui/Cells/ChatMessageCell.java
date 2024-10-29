@@ -510,6 +510,13 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         default void didLongPress(ChatMessageCell cell, float x, float y) {
         }
 
+        default void didSideButtonLongPress(ChatMessageCell cell, float x, float y, float sideButtonStartX) {
+        }
+
+        default boolean checkFastForwardTouchEvent(MotionEvent event) {
+            return false;
+        }
+
         default void didPressReplyMessage(ChatMessageCell cell, int id) {
         }
 
@@ -3901,6 +3908,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
 
         if (checkRoundSeekbar(event)) {
+            return true;
+        }
+
+        if (delegate.checkFastForwardTouchEvent(event)) {
             return true;
         }
 
@@ -9919,6 +9930,12 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     @Override
     protected boolean onLongPress() {
+        if (sideButtonPressed && pressedSideButton != 0) {
+            if (delegate != null) {
+                delegate.didSideButtonLongPress(this, lastTouchX, lastTouchY, sideStartX);
+            }
+            return true;
+        }
         if (isRoundVideo && isPlayingRound && MediaController.getInstance().isPlayingMessage(currentMessageObject)) {
             float touchRadius = (lastTouchX - photoImage.getCenterX()) * (lastTouchX - photoImage.getCenterX()) + (lastTouchY - photoImage.getCenterY()) * (lastTouchY - photoImage.getCenterY());
             float r1 = (photoImage.getImageWidth() / 2f) * (photoImage.getImageWidth() / 2f);
